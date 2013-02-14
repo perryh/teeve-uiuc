@@ -15,8 +15,7 @@ loop {
       frame_size = row['FrameSize'].to_i
       while(((Time.now - start_time) * 1000) < row['Timestamp'].to_i)
       end
-      client.print(output_string[0, frame_size]) 
-      client.flush
+      client.write(output_string[0, frame_size])
     end
     client.close
     end
