@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
     struct itimerval timer;
 
 
-    initialize_connection();
+    socket_fd = initialize_connection();
 
     for(int i = 0; i < 100000; i++) {
         output_buffer[i] = 'x';
