@@ -12,21 +12,12 @@
 #define PORT "2000"
 #define MAX_RECV_SIZE 1000
 
-void *get_in_addr(struct sockaddr *sa) {
-    if (sa->sa_family == AF_INET) {
-        return &(((struct sockaddr_in*)sa)->sin_addr);
-    }
-    return &(((struct sockaddr_in6*)sa)->sin6_addr);
-}
-
-int main(int argc, char *argv[]) {
+int initialize_connection() {
     int socket_fd;
-    int status;
-    int num_bytes = 1;
-    char buffer[MAX_RECV_SIZE];
     struct addrinfo hints;
     struct addrinfo *connection_info;
-
+    int status = 0;
+    
     memset(&hints, 0, sizeof(hints));
 
     hints.ai_family = AF_INET;
@@ -48,7 +39,17 @@ int main(int argc, char *argv[]) {
         perror("connect error");
         exit(1);
     }
+    freeaddrinfo(connection_info);
+    return socket_fd;
+}
 
+int main(int argc, char *argv[]) {
+    int socket_fd;
+    int num_bytes = 1;
+    char buffer[MAX_RECV_SIZE];
+    struct addrinfo *connection_info;
+
+    socket_fd = initialize_connection();
 
     while(num_bytes != 0) {
         if((num_bytes = recv(socket_fd, buffer, MAX_RECV_SIZE-1, 0)) == -1) {
@@ -60,7 +61,6 @@ int main(int argc, char *argv[]) {
 
         printf("string is: %s", buffer);    
     }
-    freeaddrinfo(connection_info);
     close(socket_fd);
     return 0;
 }
