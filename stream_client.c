@@ -9,6 +9,7 @@
 #include <netinet/in.h>
 #include <signal.h>
 #include <sys/time.h>
+#include <errno.h>
 
 #define HOST "localhost"
 #define PORT "2000"
@@ -30,20 +31,20 @@ int initialize_connection() {
     hints.ai_flags = AI_PASSIVE;
     
     if((status = getaddrinfo(HOST, PORT, &hints, &connection_info)) != 0) {
-        fprintf(stderr, "getaddrinfo error");
+        printf("getaddrinfo error\n");
         exit(1);
     }
 
     if((socket_fd = socket(connection_info->ai_family, 
         connection_info->ai_socktype, connection_info->ai_protocol)) == -1) {
-        perror("socket error");
+        printf("socket error\n");
         exit(1);
     }
 
     if(connect(socket_fd, connection_info->ai_addr, 
         connection_info->ai_addrlen) == -1) {
         close(socket_fd);
-        perror("connect error");
+        printf("connect error\n");
         exit(1);
     }
     freeaddrinfo(connection_info);
@@ -65,9 +66,8 @@ int main(int argc, char *argv[]) {
     struct addrinfo *connection_info;
     FILE *input_csv = NULL;
     char *input_line = NULL;
-    int send_status;
     size_t line_length = 0;
-    ssize_t read;
+    ssize_t sent;
 
     struct sigaction sa;
     struct itimerval timer;
@@ -97,8 +97,11 @@ int main(int argc, char *argv[]) {
     while(fscanf(input_csv, "%d,%d,%s\n", &frame_size, &time_stamp, 
         input_buffer) != EOF) {
         while(flag == 1);
-        printf("%d,%d\n", frame_size, time_stamp);
-        send_status = send(socket_fd, output_buffer, frame_size, 0);
+        //printf("%d,%d\n", frame_size, time_stamp);
+        sent = send(socket_fd, output_buffer, frame_size, 0);
+        if(sent == -1)
+            printf("errno %d\n", errno);
+        printf("Sent %zd characters\n", sent);
         flag = 1;
         timer.it_value.tv_usec = (time_stamp - last_time) * 1000;
         last_time = time_stamp;
