@@ -7,10 +7,15 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <signal.h>
+#include <sys/time.h>
 
 #define HOST "localhost"
 #define PORT "2000"
-#define MAX_RECV_SIZE 1000
+
+int last_time = 0;
+int flag = 0;
+
 
 int initialize_connection() {
     int socket_fd;
@@ -29,12 +34,14 @@ int initialize_connection() {
         exit(1);
     }
 
-    if((socket_fd = socket(connection_info->ai_family, connection_info->ai_socktype, connection_info->ai_protocol)) == -1) {
+    if((socket_fd = socket(connection_info->ai_family, 
+        connection_info->ai_socktype, connection_info->ai_protocol)) == -1) {
         perror("socket error");
         exit(1);
     }
 
-    if(connect(socket_fd, connection_info->ai_addr, connection_info->ai_addrlen) == -1) {
+    if(connect(socket_fd, connection_info->ai_addr, 
+        connection_info->ai_addrlen) == -1) {
         close(socket_fd);
         perror("connect error");
         exit(1);
@@ -43,26 +50,61 @@ int initialize_connection() {
     return socket_fd;
 }
 
+void timer_handler(int signum) {
+    flag = 0;
+}
+
 int main(int argc, char *argv[]) {
     int socket_fd;
+    int time_stamp;
+    int frame_size;
+    char *filename = argv[1];
     int num_bytes = 1;
-    char buffer[MAX_RECV_SIZE];
+    char input_buffer[100];
+    char output_buffer[100000];
     struct addrinfo *connection_info;
+    FILE *input_csv = NULL;
+    char *input_line = NULL;
+    int send_status;
+    size_t line_length = 0;
+    ssize_t read;
 
-    socket_fd = initialize_connection();
+    struct sigaction sa;
+    struct itimerval timer;
 
-    while(num_bytes != 0) {
-        if((num_bytes = recv(socket_fd, buffer, MAX_RECV_SIZE-1, 0)) == -1) {
-            perror("recv error");
-            exit(1);
-        }
 
-        buffer[num_bytes - 1] = '\0';
+    initialize_connection();
 
-        printf("string is: %s", buffer);    
+    for(int i = 0; i < 100000; i++) {
+        output_buffer[i] = 'x';
     }
+
+    input_csv = fopen(filename, "r");
+
+    if(input_csv == NULL) {
+        perror("fopen error");
+        exit(1);
+    }
+
+
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = &timer_handler;
+    sigaction(SIGALRM, &sa, NULL);
+    timer.it_value.tv_sec = 0;
+    timer.it_interval.tv_sec = 0;
+    timer.it_interval.tv_usec = 0;
+
+    while(fscanf(input_csv, "%d,%d,%s\n", &frame_size, &time_stamp, 
+        input_buffer) != EOF) {
+        while(flag == 1);
+        printf("%d,%d\n", frame_size, time_stamp);
+        send_status = send(socket_fd, output_buffer, frame_size, 0);
+        flag = 1;
+        timer.it_value.tv_usec = (time_stamp - last_time) * 1000;
+        last_time = time_stamp;
+        setitimer(ITIMER_REAL, &timer, NULL);
+    }
+
     close(socket_fd);
     return 0;
 }
-
-
