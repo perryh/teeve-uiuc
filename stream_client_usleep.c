@@ -63,7 +63,8 @@ int main(int argc, char *argv[]) {
 
     socket_fd = initialize_connection();
 
-    for(int i = 0; i < 100000; i++) {
+    int i;
+    for(i = 0; i < 100000; i++) {
         output_buffer[i] = 'x';
     }
 
