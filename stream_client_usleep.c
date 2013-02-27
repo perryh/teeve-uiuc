@@ -7,16 +7,11 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <signal.h>
-#include <sys/time.h>
 #include <errno.h>
+#include <time.h>
 
 #define HOST "localhost"
 #define PORT "2000"
-
-int last_time = 0;
-int flag = 0;
-
 
 int initialize_connection() {
     int socket_fd;
@@ -51,10 +46,6 @@ int initialize_connection() {
     return socket_fd;
 }
 
-void timer_handler(int signum) {
-    flag = 0;
-}
-
 int main(int argc, char *argv[]) {
     int socket_fd;
     int time_stamp;
@@ -68,10 +59,7 @@ int main(int argc, char *argv[]) {
     char *input_line = NULL;
     size_t line_length = 0;
     ssize_t sent;
-
-    struct sigaction sa;
-    struct itimerval timer;
-
+    struct timespec initial_time, current_time;
 
     socket_fd = initialize_connection();
 
@@ -86,26 +74,16 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_handler = &timer_handler;
-    sigaction(SIGALRM, &sa, NULL);
-    timer.it_value.tv_sec = 0;
-    timer.it_interval.tv_sec = 0;
-    timer.it_interval.tv_usec = 0;
+    clock_gettime(CLOCK_REALTIME, &initial_time);
 
     while(fscanf(input_csv, "%d,%d,%s\n", &frame_size, &time_stamp, 
         input_buffer) != EOF) {
-        while(flag == 1);
-        //printf("%d,%d\n", frame_size, time_stamp);
+        clock_gettime(CLOCK_REALTIME, &current_time);
+        usleep(time_stamp - ((initial_time.tv_nsec - current_time.tv_nsec) * 1000000));
         sent = send(socket_fd, output_buffer, frame_size, 0);
         if(sent == -1)
             printf("errno %d\n", errno);
         printf("Sent %zd characters\n", sent);
-        flag = 1;
-        timer.it_value.tv_usec = (time_stamp - last_time) * 1000;
-        last_time = time_stamp;
-        setitimer(ITIMER_REAL, &timer, NULL);
     }
 
     close(socket_fd);
