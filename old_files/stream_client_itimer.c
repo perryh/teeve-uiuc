@@ -8,8 +8,9 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <signal.h>
-#include <sys/time.h>
 #include <errno.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #define HOST "localhost"
 #define PORT "2000"
@@ -72,7 +73,7 @@ int main(int argc, char *argv[]) {
     struct sigaction sa;
     struct itimerval timer;
 
-
+    setpriority(PRIO_PROCESS, 0, -20);
     socket_fd = initialize_connection();
 
     for(int i = 0; i < 100000; i++) {
@@ -96,16 +97,17 @@ int main(int argc, char *argv[]) {
 
     while(fscanf(input_csv, "%d,%d,%s\n", &frame_size, &time_stamp, 
         input_buffer) != EOF) {
-        while(flag == 1);
-        //printf("%d,%d\n", frame_size, time_stamp);
-        sent = send(socket_fd, output_buffer, frame_size, 0);
-        if(sent == -1)
-            printf("errno %d\n", errno);
-        printf("Sent %zd characters\n", sent);
         flag = 1;
         timer.it_value.tv_usec = (time_stamp - last_time) * 1000;
         last_time = time_stamp;
         setitimer(ITIMER_REAL, &timer, NULL);
+
+        while(flag == 1);
+        //printf("%d,%d\n", frame_size, time_stamp);
+        sent = send(socket_fd, output_buffer, frame_size, MSG_DONTWAIT);
+        if(sent == -1)
+            printf("errno %d\n", errno);
+        printf("Sent %zd characters\n", sent);
     }
 
     close(socket_fd);
