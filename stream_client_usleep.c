@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
         //printf("Sent %zd characters\n", sent);
     }
 
-    fclose(filename);
+    fclose(input_csv);
     close(socket_fd);
     return 0;
 }

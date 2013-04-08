@@ -9,6 +9,7 @@
 #include <netinet/in.h>
 #include <errno.h>
 #include <time.h>
+#include <sched.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <netinet/in.h>
