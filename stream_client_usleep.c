@@ -27,6 +27,10 @@ int register_pid(FILE *proc_file, pid_t pid) {
     return 1;
 }
 
+void unregister_pid(FILE *proc_file, pid_t pid) {
+    fprintf(proc_file, "U,%u", pid,);
+}
+
 int initialize_connection() {
     int socket_fd;
     struct addrinfo hints;
@@ -111,6 +115,9 @@ int main(int argc, char *argv[]) {
         //printf("Sent %zd characters\n", sent);
     }
 
+    unregister_pid(my_pid);
+    fclose(filename);
+    fclose(proc_file);
     close(socket_fd);
     return 0;
 }
