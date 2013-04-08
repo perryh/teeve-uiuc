@@ -12,6 +12,7 @@
 #include <sched.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/syscall.h>
 #include <netinet/in.h>
 
 #define PORT "2000"
