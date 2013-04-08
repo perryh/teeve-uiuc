@@ -9,11 +9,23 @@
 #include <netinet/in.h>
 #include <errno.h>
 #include <time.h>
+#include <sched.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 
 #define HOST "localhost"
 #define PORT "2000"
+#define PROC_FILE "/proc/mp2/status"
+#define PERIOD 1
+#define COMPUTATION 1
+
+int register_pid(FILE *proc_file, pid_t pid) {
+    proc_file = fopen(PROC_FILE, "w");
+    if(proc_file == NULL)
+        return -1;
+    fprintf(proc_file, "R,%u,%u,%u\n", pid, PERIOD, COMPUTATION);
+    return 1;
+}
 
 int initialize_connection() {
     int socket_fd;
@@ -49,9 +61,7 @@ int initialize_connection() {
 }
 
 int main(int argc, char *argv[]) {
-    int socket_fd;
-    int time_stamp;
-    int frame_size;
+    int socket_fd, time_stamp, frame_size;
     char *filename = argv[1];
     int num_bytes = 1;
     char input_buffer[100];
@@ -61,10 +71,16 @@ int main(int argc, char *argv[]) {
     size_t line_length = 0;
     ssize_t sent;
     struct timespec initial_time, current_time;
+    pid_t my_pid;
+    FILE *proc_file;
 
-
-    setpriority(PRIO_PROCESS, 0, -20);
+    my_pid = syscall(__NR_gettid);
+    //setpriority(PRIO_PROCESS, 0, -20);
     socket_fd = initialize_connection();
+    if(register_pid(my_pid) != 1) {
+        perror("register pid failed");
+        exit(1);    
+    }
 
     int i;
     for(i = 0; i < 100000; i++) {
