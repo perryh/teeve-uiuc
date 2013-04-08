@@ -15,21 +15,6 @@
 
 #define HOST "localhost"
 #define PORT "2000"
-#define PROC_FILE "/proc/mp2/status"
-#define PERIOD 1
-#define COMPUTATION 1
-
-int register_pid(FILE *proc_file, pid_t pid) {
-    proc_file = fopen(PROC_FILE, "w");
-    if(proc_file == NULL)
-        return -1;
-    fprintf(proc_file, "R,%u,%u,%u\n", pid, PERIOD, COMPUTATION);
-    return 1;
-}
-
-void unregister_pid(FILE *proc_file, pid_t pid) {
-    fprintf(proc_file, "U,%u", pid,);
-}
 
 int initialize_connection() {
     int socket_fd;
@@ -75,16 +60,8 @@ int main(int argc, char *argv[]) {
     size_t line_length = 0;
     ssize_t sent;
     struct timespec initial_time, current_time;
-    pid_t my_pid;
-    FILE *proc_file;
 
-    my_pid = syscall(__NR_gettid);
-    //setpriority(PRIO_PROCESS, 0, -20);
-    socket_fd = initialize_connection();
-    if(register_pid(my_pid) != 1) {
-        perror("register pid failed");
-        exit(1);    
-    }
+    setpriority(PRIO_PROCESS, 0, -20);
 
     int i;
     for(i = 0; i < 100000; i++) {
@@ -115,9 +92,7 @@ int main(int argc, char *argv[]) {
         //printf("Sent %zd characters\n", sent);
     }
 
-    unregister_pid(my_pid);
     fclose(filename);
-    fclose(proc_file);
     close(socket_fd);
     return 0;
 }
