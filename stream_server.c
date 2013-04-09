@@ -19,6 +19,7 @@
 #define PROC_FILE "/proc/mp2/status"
 #define PERIOD 5
 #define COMPUTATION 2
+#define MSG_SIZES_FILENAME "sizes.csv"
 
 FILE *proc_file;
 
@@ -85,6 +86,8 @@ int main(int argc, char *argv[]) {
     int recv_len = 1;
     double current_minus_initial = 0;
     pid_t my_pid;
+    FILE *input_csv = NULL;
+    int frame_size = 0;
 
     my_pid = syscall(__NR_gettid);
     if(register_pid(my_pid) != 1) {
@@ -92,15 +95,20 @@ int main(int argc, char *argv[]) {
         exit(1);    
     }
     socket_fd = initialize_connection();
+    input_csv = fopen(MSG_SIZES_FILENAME, "r");
 
+    if(input_csv == NULL) {
+        perror("fopen error");
+        exit(1);
+    }
     addr_size = sizeof their_addr;
 
     new_fd = accept(socket_fd, (struct sockaddr *)&their_addr, &addr_size);
     yield_pid(my_pid);
     clock_gettime(CLOCK_REALTIME, &initial_time);
 
-    while(recv_len != 0) {
-    	recv_len = recv(new_fd, &output_buffer, 100000, 0);
+    while(fscanf(input_csv, "%d\n", &frame_size) != EOL) {
+    	recv_len = recv(new_fd, &output_buffer, frame_size, MSG_WAITALL);
 	    clock_gettime(CLOCK_REALTIME, &current_time);
 	    current_minus_initial = (current_time.tv_sec - initial_time.tv_sec) * 1000.0;
 	   	current_minus_initial += (current_time.tv_nsec - initial_time.tv_nsec) / 1000000.0;
