@@ -115,6 +115,7 @@ int main(int argc, char *argv[]) {
         
         for(vector<Client>::iterator it = client_list.begin(); 
             it != client_list.end(); ++it) {
+            if(it->recv_bytes < it->total_bytes) continue;
             it->recv_bytes += recv(it->socket_fd, &output_buffer, frame_size, 
             MSG_DONTWAIT);
             it->total_bytes = frame_size;
@@ -124,7 +125,7 @@ int main(int argc, char *argv[]) {
             (current_time.tv_sec - initial_time.tv_sec) * 1000.0;
 	   	current_minus_initial += 
             (current_time.tv_nsec - initial_time.tv_nsec) / 1000000.0;
-	    printf("%d,%f\n", recv_len, current_minus_initial);
+	    printf("period end at %f\n", current_minus_initial);
 	}
 
     client_list.clear();
