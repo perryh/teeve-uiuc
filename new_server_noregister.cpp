@@ -68,13 +68,20 @@ int initialize_connection() {
 
 bool check_done(vector<Client> client_list) {
     for(vector<Client>::iterator it = client_list.begin(); 
-        it != client_list.end(); ++it) {
+        it != client_list.end(); it++) {
         if(it->recv_bytes < it->total_bytes)
             return false;
     }
     return true;
 }
 
+int reset_client_bytes(vector<Client> client_list) {
+    for(vector<Client>::iterator it = client_list.begin();
+        it != client_list.end(); it++) {
+        it->recv_bytes = 0;
+        it->total_bytes = 0;
+    }
+}
 
 int main(int argc, char *argv[]) {
     struct sockaddr_storage their_addr;
@@ -126,6 +133,8 @@ int main(int argc, char *argv[]) {
 	   	current_minus_initial += 
             (current_time.tv_nsec - initial_time.tv_nsec) / 1000000.0;
 	    printf("period end at %f\n", current_minus_initial);
+        if(check_done(client_list))
+            reset_client_bytes(client_list);
 	}
 
     client_list.clear();
