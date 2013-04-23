@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
     double current_minus_initial = 0;
     FILE *input_csv = NULL;
     int frame_size = 0;
-    char start = 'p';
+    char start[1];
 
     setpriority(PRIO_PROCESS, 0, -20);
     socket_fd = initialize_connection();
@@ -110,6 +110,7 @@ int main(int argc, char *argv[]) {
 
     int temp = 0;
 
+    start[0] = 'x';
     for(vector<Client>::iterator it = client_list.begin();
         it != client_list.end(); it++) {
         it->recv_bytes = 0;
