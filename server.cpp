@@ -19,13 +19,12 @@ using namespace std;
 
 #define PORT "2000"
 #define MSG_SIZES_FILENAME "sizes.csv"
-#define NUM_CLIENTS 1
+#define NUM_CLIENTS 2
 
 class Client {
     public:
         int socket_fd;
-        unsigned int recv_bytes;
-        unsigned int total_bytes;
+        int recv_bytes;
 };
 
 int initialize_connection() {
@@ -53,13 +52,13 @@ int initialize_connection() {
 
     if(bind(socket_fd, connection_info->ai_addr, connection_info->ai_addrlen) 
         == -1) {
-      printf("bind error\n");
-    	exit(1);
+        printf("bind error\n");
+        exit(1);
     }
 
     if(listen(socket_fd, 20) == -1) {
-    	printf("listen error\n");
-    	exit(1);
+        printf("listen error\n");
+        exit(1);
     }
 
     freeaddrinfo(connection_info);
@@ -69,18 +68,10 @@ int initialize_connection() {
 bool check_done(vector<Client> client_list) {
     for(vector<Client>::iterator it = client_list.begin(); 
         it != client_list.end(); it++) {
-        if(it->recv_bytes < it->total_bytes)
+        if(it->recv_bytes > 0)
             return false;
     }
     return true;
-}
-
-int reset_client_bytes(vector<Client> client_list) {
-    for(vector<Client>::iterator it = client_list.begin();
-        it != client_list.end(); it++) {
-        it->recv_bytes = 0;
-        it->total_bytes = 0;
-    }
 }
 
 int main(int argc, char *argv[]) {
@@ -90,13 +81,16 @@ int main(int argc, char *argv[]) {
     int socket_fd, time_stamp, num_bytes = 1;
     char output_buffer[1000000];
     struct timespec initial_time, current_time;
+    struct timespec compute_start, compute_end;
     int new_fd, recv_len = 1;
     double current_minus_initial = 0;
     FILE *input_csv = NULL;
-    unsigned int frame_size = 0;
+    int frame_size = 0;
+    char start = 'p';
 
     setpriority(PRIO_PROCESS, 0, -20);
     socket_fd = initialize_connection();
+    //printf("%d\n", socket_fd);
     input_csv = fopen(MSG_SIZES_FILENAME, "r");
 
     if(input_csv == NULL) {
@@ -111,31 +105,41 @@ int main(int argc, char *argv[]) {
         temp->socket_fd = accept(socket_fd, (struct sockaddr *)&their_addr, 
             &addr_size);
         temp->recv_bytes = 0;
-        temp->total_bytes = 0;
         client_list.push_back(*temp);
     }
 
-    clock_gettime(CLOCK_REALTIME, &initial_time);
+    int temp = 0;
 
-    while(!check_done(client_list) && 
-        fscanf(input_csv, "%d\n", &frame_size) != EOF) {
-        
-        for(vector<Client>::iterator it = client_list.begin(); 
-            it != client_list.end(); ++it) {
-            if(it->recv_bytes < it->total_bytes) continue;
-            it->recv_bytes += recv(it->socket_fd, &output_buffer, frame_size, 
-            MSG_DONTWAIT);
-            it->total_bytes = frame_size;
+    for(vector<Client>::iterator it = client_list.begin();
+        it != client_list.end(); it++) {
+        it->recv_bytes = 0;
+        if(send(it->socket_fd, start, 1, 0) != -1)
+            printf("starting!!!\n");
+    }
+
+
+    clock_gettime(CLOCK_REALTIME, &initial_time);
+    while(fscanf(input_csv, "%d\n", &frame_size) != EOF) {
+        //printf("frame size = %d\n", frame_size);
+        for(vector<Client>::iterator it = client_list.begin();
+            it != client_list.end(); it++) {
+            it->recv_bytes = frame_size;
         }
-	    clock_gettime(CLOCK_REALTIME, &current_time);
-	    current_minus_initial = 
-            (current_time.tv_sec - initial_time.tv_sec) * 1000.0;
-	   	current_minus_initial += 
-            (current_time.tv_nsec - initial_time.tv_nsec) / 1000000.0;
-	    printf("period end at %f\n", current_minus_initial);
-        if(check_done(client_list))
-            reset_client_bytes(client_list);
-	}
+        while(!check_done(client_list)) {
+            for(vector<Client>::iterator it = client_list.begin(); 
+                it != client_list.end(); it++) {
+                if(it->recv_bytes == 0) continue;
+                temp = recv(it->socket_fd, &output_buffer, frame_size, MSG_DONTWAIT);
+                if(temp != -1) {
+                    it->recv_bytes -= temp;
+                }
+            }
+        }
+        clock_gettime(CLOCK_REALTIME, &current_time);
+        current_minus_initial = (current_time.tv_sec - initial_time.tv_sec) * 1000.0;
+        current_minus_initial += (current_time.tv_nsec - initial_time.tv_nsec) / 1000000.0;
+        printf("%d,%f\n", frame_size, current_minus_initial);
+    }
 
     client_list.clear();
     close(socket_fd);
