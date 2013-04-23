@@ -77,7 +77,8 @@ int main(int argc, char *argv[]) {
         perror("fopen error");
         exit(1);
     }
- 
+    if(recv(socket_fd, &start_buffer, 1, MSG_WAITALL) != -1)
+        printf("starting!!!\n"); 
     clock_gettime(CLOCK_REALTIME, &initial_time);
  
     while(fscanf(input_csv, "%d,%d,%s\n", &frame_size, &time_stamp,
